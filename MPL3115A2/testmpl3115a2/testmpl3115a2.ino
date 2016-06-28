@@ -42,6 +42,7 @@ void loop() {
   float pascals = baro.getPressure();
   // Our weather page presents pressure in Inches (Hg)
   // Use http://www.onlineconversion.com/pressure.htm for other units
+  Serial.print(pascals/1000); Serial.print(" kPa - ");
   Serial.print(pascals/3377); Serial.println(" Inches (Hg)");
 
   float altm = baro.getAltitude();
@@ -50,5 +51,5 @@ void loop() {
   float tempC = baro.getTemperature();
   Serial.print(tempC); Serial.println("*C");
 
-  delay(250);
+  delay(500);
 }
