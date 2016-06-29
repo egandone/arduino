@@ -1,6 +1,8 @@
 #include <Wire.h>
 #include <Adafruit_MCP23017.h>
 #include <Adafruit_RGBLCDShield.h>
+#include "SparkFunHTU21D.h"
+
 
 // I2C ADDRESS of the MPL311A2
 #define MPL3115A2_ADDRESS                       (0x60)    // 1100000
@@ -134,12 +136,15 @@ float getPressure() {
 #define WHITE 0x7
 
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
+HTU21D myHumidity;
 
 void setup() {
   Serial.begin(9600);
   Serial.println("Starting setup() ...");
   lcd.begin(16, 2);
   lcd.setBacklight(WHITE);
+
+  myHumidity.begin();
   
   Wire.begin();
   uint8_t whoami = read8(MPL3115A2_WHOAMI);
@@ -169,13 +174,21 @@ void loop() {
   Serial.print(temperature);
   Serial.println("C");
 
+  float humdity = myHumidity.readHumidity();
+  float temperature2 = myHumidity.readTemperature();
+
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(temperature);
-  lcd.print("C");
+  lcd.print("C (");
+  lcd.print(temperature2);
+  lcd.print(")");
+  
   lcd.setCursor(0,1);
   lcd.print(pressure);
-  lcd.print("kPa");
+  lcd.print("kPa ");
+  lcd.print(humdity);
+  lcd.print("%");
   
   delay(500);
 }
