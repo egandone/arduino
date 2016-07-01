@@ -1,6 +1,9 @@
 #include <Wire.h>
+#include <SPI.h>
 #include <Adafruit_MCP23017.h>
 #include <Adafruit_RGBLCDShield.h>
+#include "nRF24L01.h"
+#include "RF24.h"
 #include "SparkFunHTU21D.h"
 
 
@@ -138,6 +141,12 @@ float getPressure() {
 Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 HTU21D myHumidity;
 
+// Radio pipe addresses for the 2 nodes to communicate.
+const uint64_t pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };
+// Set up nRF24L01 radio on SPI bus plus pins 7 & 8
+RF24 radio(7,8);
+
+
 void setup() {
   Serial.begin(9600);
   Serial.println("Starting setup() ...");
@@ -145,6 +154,28 @@ void setup() {
   lcd.setBacklight(WHITE);
 
   myHumidity.begin();
+
+  radio.begin();
+  // enable dynamic payloads
+  radio.enableDynamicPayloads();
+  // optionally, increase the delay between retries & # of retries
+  radio.setRetries(5,15);
+
+  //
+  // Open pipes to other nodes for communication
+  //
+  radio.openWritingPipe(pipes[0]);
+  radio.openReadingPipe(1,pipes[1]);
+
+  //
+  // Start listening
+  //
+  radio.startListening();
+
+  //
+  // Dump the configuration of the rf unit for debugging
+  //
+  radio.printDetails();
   
   Wire.begin();
   uint8_t whoami = read8(MPL3115A2_WHOAMI);
@@ -164,15 +195,33 @@ void setup() {
   Serial.println("... setup() finished");
 }
 
+void sendMessage(float temp1, float temp2, float pressure, float humidity) {
+  String message;
+  message.concat(temp1);
+  message.concat("|");
+  message.concat(temp2);
+  message.concat("|");
+  message.concat(pressure);
+  message.concat("|");
+  message.concat(humidity);
+
+  const char *msg = message.c_str();
+  int len = strlen(msg);
+  
+  radio.stopListening();
+  radio.write(msg, len);
+  // confirmReceived();
+  radio.startListening();
+}
 void loop() {
   float pressure = getPressure() / 1000.0;
-  Serial.print("Pressure is ");
-  Serial.print(pressure);
-  Serial.println("kPa");
+//  Serial.print("Pressure is ");
+//  Serial.print(pressure);
+//  Serial.println("kPa");
   float temperature = getTemperature();
-  Serial.print("Temperature is ");
-  Serial.print(temperature);
-  Serial.println("C");
+//  Serial.print("Temperature is ");
+//  Serial.print(temperature);
+//  Serial.println("C");
 
   float humdity = myHumidity.readHumidity();
   float temperature2 = myHumidity.readTemperature();
@@ -189,7 +238,8 @@ void loop() {
   lcd.print("kPa ");
   lcd.print(humdity);
   lcd.print("%");
-  
+
+  sendMessage(temperature, temperature2, pressure, humdity);  
   delay(500);
 }
 
